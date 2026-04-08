@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listify — Blinkit</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #00B140;
+    --green-light: #00c94a;
+    --green-dim: rgba(0,177,64,0.15);
+    --bg: #111214;
+    --bg2: #1a1c1f;
+    --bg3: #222428;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --muted: #888;
+    --yellow: #FFD700;
+    --font: 'Poppins', sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* SCREEN MANAGEMENT */
+  .screen { display: none; min-height: 100vh; flex-direction: column; animation: fadeIn 0.3s ease; }
+  .screen.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* SHARED COMPONENTS */
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px 10px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .blinkit-logo {
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 800; font-size: 18px; letter-spacing: -0.5px;
+  }
+  .blinkit-logo .lightning { font-size: 20px; }
+  .blinkit-logo span { color: var(--text); }
+  .blinkit-logo em { color: var(--green); font-style: normal; }
+
+  .back-btn {
+    background: none; border: none; color: var(--text);
+    font-size: 20px; cursor: pointer; padding: 4px 8px 4px 0;
+    display: flex; align-items: center;
+  }
+
+  /* SEARCH BAR */
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg3); border-radius: 12px;
+    padding: 10px 14px; margin: 12px 16px 0;
+    border: 1px solid var(--border);
+  }
+  .search-bar input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: var(--font); font-size: 14px; color: var(--text);
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .search-icon { color: var(--muted); font-size: 16px; }
+
+  /* LISTIFY BAR */
+  .listify-section { margin: 14px 16px 0; }
+  .listify-label {
+    font-size: 12px; color: var(--green);
+    font-weight: 600; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .listify-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg3);
+    border: 1.5px solid var(--green);
+    border-radius: 14px; padding: 11px 14px;
+    cursor: text; transition: box-shadow 0.2s;
+    box-shadow: 0 0 0 0 var(--green-dim);
+  }
+  .listify-bar:hover { box-shadow: 0 0 0 4px var(--green-dim); }
+  .listify-bar input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: var(--font); font-size: 14px; color: var(--text);
+    cursor: text;
+  }
+  .listify-bar input::placeholder { color: var(--muted); }
+  .listify-mic { color: var(--green); font-size: 18px; }
+
+  /* TOGGLE PILLS */
+  .toggle-row {
+    display: flex; gap: 8px; margin: 10px 16px 0;
+    align-items: center;
+  }
+  .toggle-label { font-size: 12px; color: var(--muted); margin-right: 4px; }
+  .pill {
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.2s; border: 1.5px solid var(--border);
+    background: none; color: var(--muted); font-family: var(--font);
+  }
+  .pill.active { background: var(--green); color: #fff; border-color: var(--green); font-weight: 600; }
+
+  /* CATEGORY TILES */
+  .section-title {
+    font-size: 16px; font-weight: 700; margin: 20px 16px 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .category-scroll {
+    display: flex; gap: 10px; padding: 0 16px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .category-scroll::-webkit-scrollbar { display: none; }
+  .cat-tile {
+    min-width: 80px; background: var(--bg2);
+    border-radius: 14px; padding: 14px 10px;
+    text-align: center; cursor: pointer;
+    border: 1px solid var(--border); flex-shrink: 0;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .cat-tile:hover { transform: scale(1.03); border-color: var(--green); }
+  .cat-tile .emoji { font-size: 24px; display: block; margin-bottom: 6px; }
+  .cat-tile .cat-name { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  /* DEALS SECTION */
+  .deals-scroll {
+    display: flex; gap: 12px; padding: 0 16px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .deals-scroll::-webkit-scrollbar { display: none; }
+  .deal-card {
+    min-width: 160px; background: var(--bg2);
+    border-radius: 14px; padding: 14px;
+    border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .deal-badge {
+    background: var(--green); color: #fff;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 20px;
+    display: inline-block; margin-bottom: 8px;
+  }
+  .deal-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .deal-price { font-size: 12px; color: var(--green); font-weight: 700; }
+  .deal-old { font-size: 11px; color: var(--muted); text-decoration: line-through; }
+
+  /* SCREEN 2 — PROCESSING */
+  .processing-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center;
+  }
+  .processing-query {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 18px;
+    font-size: 15px; font-weight: 600; margin-bottom: 40px;
+    width: 100%; max-width: 320px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .processing-query .q-icon { font-size: 18px; }
+  .mode-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--green-dim); border: 1px solid var(--green);
+    color: var(--green); border-radius: 20px; padding: 4px 12px;
+    font-size: 12px; font-weight: 600; margin-bottom: 32px;
+  }
+
+  /* SPINNER */
+  .spinner-wrap { margin-bottom: 28px; position: relative; }
+  .spinner-ring {
+    width: 60px; height: 60px;
+    border: 3px solid var(--bg3);
+    border-top: 3px solid var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-inner {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+  }
+
+  .processing-text {
+    font-size: 17px; font-weight: 600; margin-bottom: 8px;
+  }
+  .processing-sub { font-size: 13px; color: var(--muted); }
+
+  /* DOTS ANIMATION */
+  .dot-loader span {
+    display: inline-block; width: 6px; height: 6px;
+    background: var(--green); border-radius: 50%;
+    margin: 0 2px; animation: bounce 0.9s infinite;
+  }
+  .dot-loader span:nth-child(2) { animation-delay: 0.15s; }
+  .dot-loader span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.7); opacity:0.5; } 40% { transform: scale(1.1); opacity:1; } }
+
+  /* SCREEN 3A — AUTO CART */
+  .cart-header { padding: 14px 16px 0; }
+  .cart-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .cart-sub { font-size: 13px; color: var(--muted); }
+
+  .cart-items { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+  .cart-item {
+    background: var(--bg2); border-radius: 16px;
+    padding: 14px; border: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: flex-start;
+    animation: slideIn 0.3s ease both;
+  }
+  .cart-item:nth-child(1) { animation-delay: 0.05s; }
+  .cart-item:nth-child(2) { animation-delay: 0.12s; }
+  .cart-item:nth-child(3) { animation-delay: 0.19s; }
+  @keyframes slideIn { from { opacity:0; transform: translateX(-12px); } to { opacity:1; transform: translateX(0); } }
+
+  .item-emoji-box {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: var(--bg3); display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+  }
+  .item-info { flex: 1; }
+  .item-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .item-brand { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .item-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .item-price { font-size: 15px; font-weight: 700; color: var(--green); }
+  .preferred-tag {
+    background: rgba(255,215,0,0.15); color: var(--yellow);
+    font-size: 10px; font-weight: 600; border-radius: 6px;
+    padding: 2px 7px; border: 1px solid rgba(255,215,0,0.3);
+  }
+  .change-btn {
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--muted); font-size: 11px; font-weight: 500;
+    border-radius: 8px; padding: 4px 9px; cursor: pointer;
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .change-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .qty-ctrl {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  }
+  .qty-btn {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .qty-btn:hover { background: var(--green); border-color: var(--green); }
+  .qty-num { font-size: 14px; font-weight: 600; min-width: 18px; text-align: center; }
+
+  /* PRICE BREAKDOWN */
+  .price-section {
+    background: var(--bg2); margin: 0 16px 12px;
+    border-radius: 16px; padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .price-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .price-row.total { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 0; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+  .price-row.total span:last-child { color: var(--green); }
+
+  .confirm-btn {
+    margin: 0 16px 24px;
+    background: var(--green); color: #fff;
+    font-family: var(--font); font-size: 16px; font-weight: 700;
+    border: none; border-radius: 14px; padding: 16px;
+    width: calc(100% - 32px); cursor: pointer;
+    transition: all 0.2s; letter-spacing: 0.3px;
+  }
+  .confirm-btn:hover { background: var(--green-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,177,64,0.35); }
+  .confirm-btn:active { transform: translateY(0); }
+
+  /* SCREEN 3B — SUGGEST */
+  .suggest-header { padding: 14px 16px 0; }
+  .suggest-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .suggest-sub { font-size: 13px; color: var(--muted); }
+
+  .suggest-rows { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+  .suggest-row-label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
+  .suggest-options { display: flex; gap: 10px; }
+  .suggest-option {
+    flex: 1; background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 12px 8px; text-align: center;
+    cursor: pointer; transition: all 0.18s;
+  }
+  .suggest-option.selected { border-color: var(--green); background: var(--green-dim); }
+  .suggest-option .s-emoji { font-size: 28px; display: block; margin-bottom: 6px; }
+  .suggest-option .s-name { font-size: 11px; font-weight: 600; margin-bottom: 3px; line-height: 1.3; }
+  .suggest-option .s-price { font-size: 12px; color: var(--green); font-weight: 700; }
+  .suggest-option .s-check {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--green); color: #fff;
+    font-size: 10px; display: none;
+    align-items: center; justify-content: center;
+    margin: 6px auto 0;
+  }
+  .suggest-option.selected .s-check { display: flex; }
+
+  /* SCREEN 4 — CHECKOUT */
+  .checkout-header { padding: 14px 16px 0; }
+  .checkout-title { font-size: 18px; font-weight: 800; }
+  .checkout-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .checkout-delivery {
+    margin: 14px 16px 0;
+    background: var(--green-dim); border: 1px solid var(--green);
+    border-radius: 14px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .delivery-icon { font-size: 26px; }
+  .delivery-text { font-size: 14px; font-weight: 700; }
+  .delivery-sub { font-size: 12px; color: var(--green); font-weight: 600; }
+
+  .checkout-items { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .checkout-item {
+    background: var(--bg2); border-radius: 14px;
+    padding: 12px; border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .checkout-item .ci-emoji {
+    width: 42px; height: 42px; background: var(--bg3);
+    border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .ci-info { flex: 1; }
+  .ci-name { font-size: 13px; font-weight: 600; }
+  .ci-listify-tag {
+    font-size: 10px; color: var(--green); font-weight: 600;
+    display: flex; align-items: center; gap: 3px; margin-top: 2px;
+  }
+  .ci-price { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  .checkout-total {
+    margin: 0 16px 12px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 14px 16px;
+  }
+  .checkout-total .ct-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .checkout-total .ct-row.grand { font-size: 16px; font-weight: 700; color: var(--text); border-top: 1px solid var(--border); padding-top: 10px; margin-bottom: 0; margin-top: 4px; }
+  .checkout-total .ct-row.grand span:last-child { color: var(--green); }
+
+  .place-btn {
+    margin: 0 16px 28px;
+    background: var(--green); color: #fff;
+    font-family: var(--font); font-size: 16px; font-weight: 700;
+    border: none; border-radius: 14px; padding: 16px;
+    width: calc(100% - 32px); cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .place-btn:hover { background: var(--green-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,177,64,0.35); }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #222; color: #fff; padding: 12px 22px;
+    border-radius: 30px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--green); z-index: 999;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2s both;
+    white-space: nowrap;
+  }
+  @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(12px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+  @keyframes toastOut { to { opacity:0; transform: translateX(-50%) translateY(12px); } }
+
+  /* Scrollable page wrapper */
+  .scroll-body { flex: 1; overflow-y: auto; padding-bottom: 24px; }
+
+  /* Mobile frame */
+  @media (min-width: 500px) {
+    body { display: flex; align-items: flex-start; justify-content: center; background: #0a0a0b; padding: 30px 0; }
+    .app-frame {
+      width: 390px; min-height: 844px; background: var(--bg);
+      border-radius: 44px; overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+      position: relative; display: flex; flex-direction: column;
+    }
+    .screen { min-height: 844px; }
+  }
+  @media (max-width: 499px) {
+    .app-frame { width: 100%; min-height: 100vh; }
+  }
+</style>
+</head>
+<body>
+<div class="app-frame">
+
+  <!-- ========== SCREEN 1: HOMEPAGE ========== -->
+  <div class="screen active" id="s1">
+    <div class="topbar">
+      <div class="blinkit-logo">
+        <span class="lightning">⚡</span>
+        <span>blin<em>kit</em></span>
+      </div>
+      <div style="flex:1"></div>
+      <span style="font-size:13px;color:var(--muted)">📍 IITM, Chennai</span>
+    </div>
+
+    <div class="scroll-body">
+      <!-- Normal search -->
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search for atta, eggs, milk...">
+      </div>
+
+      <!-- Listify section -->
+      <div class="listify-section">
+        <div class="listify-bar" id="listifyBarTrigger">
+          <span class="listify-mic">✨</span>
+          <input type="text" id="listifyInput" placeholder="✨ Listify — tell us what you need..." readonly>
+          <span style="font-size:18px">🎙️</span>
+        </div>
+      </div>
+
+      <!-- Toggle pills -->
+      <div class="toggle-row">
+        <span class="toggle-label">Mode:</span>
+        <button class="pill active" id="pillAuto" onclick="setMode('auto')">⚡ Auto</button>
+        <button class="pill" id="pillSuggest" onclick="setMode('suggest')">🎯 Suggest</button>
+      </div>
+
+      <!-- Categories -->
+      <div class="section-title">🛒 Shop by Category</div>
+      <div class="category-scroll">
+        <div class="cat-tile"><span class="emoji">🥛</span><span class="cat-name">Dairy</span></div>
+        <div class="cat-tile"><span class="emoji">🥦</span><span class="cat-name">Veggies</span></div>
+        <div class="cat-tile"><span class="emoji">🍎</span><span class="cat-name">Fruits</span></div>
+        <div class="cat-tile"><span class="emoji">🧃</span><span class="cat-name">Drinks</span></div>
+        <div class="cat-tile"><span class="emoji">🍪</span><span class="cat-name">Snacks</span></div>
+        <div class="cat-tile"><span class="emoji">💊</span><span class="cat-name">Health</span></div>
+        <div class="cat-tile"><span class="emoji">🧹</span><span class="cat-name">Cleaning</span></div>
+        <div class="cat-tile"><span class="emoji">🐶</span><span class="cat-name">Pets</span></div>
+      </div>
+
+      <!-- Deals -->
+      <div class="section-title">🔥 Today's Deals</div>
+      <div class="deals-scroll">
+        <div class="deal-card">
+          <span class="deal-badge">30% OFF</span>
+          <div class="deal-name">Amul Taaza Milk 1L</div>
+          <div><span class="deal-price">₹42</span> <span class="deal-old">₹60</span></div>
+        </div>
+        <div class="deal-card">
+          <span class="deal-badge">20% OFF</span>
+          <div class="deal-name">Haldiram's Namkeen</div>
+          <div><span class="deal-price">₹80</span> <span class="deal-old">₹100</span></div>
+        </div>
+        <div class="deal-card">
+          <span class="deal-badge">BUY 2 GET 1</span>
+          <div class="deal-name">Red Bull 250ml</div>
+          <div><span class="deal-price">₹115</span></div>
+        </div>
+        <div class="deal-card">
+          <span class="deal-badge">15% OFF</span>
+          <div class="deal-name">Tropicana Orange 1L</div>
+          <div><span class="deal-price">₹110</span> <span class="deal-old">₹130</span></div>
+        </div>
+      </div>
+
+      <div style="height:30px"></div>
+    </div>
+  </div>
+
+  <!-- ========== SCREEN 2: PROCESSING ========== -->
+  <div class="screen" id="s2">
+    <div class="topbar">
+      <button class="back-btn" onclick="goTo('s1')">←</button>
+      <div class="blinkit-logo">
+        <span class="lightning">⚡</span>
+        <span>blin<em>kit</em></span>
+      </div>
+    </div>
+
+    <div class="processing-wrap">
+      <div class="processing-query">
+        <span class="q-icon">💬</span>
+        <span>"post-workout hydration drinks"</span>
+      </div>
+
+      <div class="mode-badge" id="modeBadgeText">
+        ⚡ Auto Mode
+      </div>
+
+      <div class="spinner-wrap">
+        <div class="spinner-ring"></div>
+        <div class="spinner-inner">✨</div>
+      </div>
+
+      <div class="processing-text">Finding the best options for you</div>
+      <div class="processing-sub" style="display:flex;align-items:center;gap:6px;justify-content:center">
+        <div class="dot-loader"><span></span><span></span><span></span></div>
+        &nbsp;Scanning 2000+ products
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SCREEN 3A: AUTO CART ========== -->
+  <div class="screen" id="s3a">
+    <div class="topbar">
+      <button class="back-btn" onclick="goTo('s1')">←</button>
+      <div class="blinkit-logo">
+        <span class="lightning">⚡</span>
+        <span>blin<em>kit</em></span>
+      </div>
+    </div>
+
+    <div class="cart-header">
+      <div class="cart-title">Your Listify Cart ✨</div>
+      <div class="cart-sub">3 items · auto-picked for "post-workout hydration"</div>
+    </div>
+
+    <div class="cart-items" style="flex:1;overflow-y:auto">
+      <!-- Item 1 -->
+      <div class="cart-item">
+        <div class="item-emoji-box">🧂</div>
+        <div class="item-info">
+          <div class="item-name">Electral ORS Powder</div>
+          <div class="item-brand">Abbott Nutrition</div>
+          <div class="item-row">
+            <span class="item-price">₹99</span>
+            <span class="preferred-tag">⭐ Preferred</span>
+          </div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(this,-1)">−</button>
+            <span class="qty-num">1</span>
+            <button class="qty-btn" onclick="changeQty(this,1)">+</button>
+            <button class="change-btn">↔ Change brand</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 2 -->
+      <div class="cart-item">
+        <div class="item-emoji-box">🟡</div>
+        <div class="item-info">
+          <div class="item-name">Gatorade 500ml</div>
+          <div class="item-brand">PepsiCo</div>
+          <div class="item-row">
+            <span class="item-price">₹89</span>
+          </div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(this,-1)">−</button>
+            <span class="qty-num">1</span>
+            <button class="qty-btn" onclick="changeQty(this,1)">+</button>
+            <button class="change-btn">↔ Change brand</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 3 -->
+      <div class="cart-item">
+        <div class="item-emoji-box">🥥</div>
+        <div class="item-info">
+          <div class="item-name">Coconut Water 330ml</div>
+          <div class="item-brand">Raw Pressery</div>
+          <div class="item-row">
+            <span class="item-price">₹65</span>
+          </div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(this,-1)">−</button>
+            <span class="qty-num">1</span>
+            <button class="qty-btn" onclick="changeQty(this,1)">+</button>
+            <button class="change-btn">↔ Change brand</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="price-section">
+      <div class="price-row"><span>Subtotal</span><span>₹253</span></div>
+      <div class="price-row"><span>Delivery fee</span><span>₹25</span></div>
+      <div class="price-row"><span>Platform fee</span><span>₹5</span></div>
+      <div class="price-row total"><span>Total</span><span>₹283</span></div>
+    </div>
+
+    <button class="confirm-btn" onclick="goToCheckout()">✅ Confirm Cart</button>
+  </div>
+
+  <!-- ========== SCREEN 3B: SUGGEST MODE ========== -->
+  <div class="screen" id="s3b">
+    <div class="topbar">
+      <button class="back-btn" onclick="goTo('s1')">←</button>
+      <div class="blinkit-logo">
+        <span class="lightning">⚡</span>
+        <span>blin<em>kit</em></span>
+      </div>
+    </div>
+
+    <div class="suggest-header">
+      <div class="suggest-title">Pick your favourites ✨</div>
+      <div class="suggest-sub">Select one per category — we'll build your cart</div>
+    </div>
+
+    <div class="suggest-rows" style="flex:1;overflow-y:auto">
+      <!-- Row 1 -->
+      <div>
+        <div class="suggest-row-label">💧 Hydration Drinks</div>
+        <div class="suggest-options">
+          <div class="suggest-option" onclick="selectSuggest(this,0)">
+            <span class="s-emoji">🟡</span>
+            <div class="s-name">Gatorade Lemon</div>
+            <div class="s-price">₹89</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,0)">
+            <span class="s-emoji">🔵</span>
+            <div class="s-name">Enerzal Blue</div>
+            <div class="s-price">₹45</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,0)">
+            <span class="s-emoji">🥤</span>
+            <div class="s-name">Sting Energy</div>
+            <div class="s-price">₹30</div>
+            <div class="s-check">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2 -->
+      <div>
+        <div class="suggest-row-label">🧂 Electrolyte Powders</div>
+        <div class="suggest-options">
+          <div class="suggest-option" onclick="selectSuggest(this,1)">
+            <span class="s-emoji">🧂</span>
+            <div class="s-name">Electral ORS</div>
+            <div class="s-price">₹99</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,1)">
+            <span class="s-emoji">⚗️</span>
+            <div class="s-name">Fast&Up Reload</div>
+            <div class="s-price">₹179</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,1)">
+            <span class="s-emoji">💊</span>
+            <div class="s-name">HealthKart ORS</div>
+            <div class="s-price">₹65</div>
+            <div class="s-check">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3 -->
+      <div>
+        <div class="suggest-row-label">🍫 Energy Bars</div>
+        <div class="suggest-options">
+          <div class="suggest-option" onclick="selectSuggest(this,2)">
+            <span class="s-emoji">🍫</span>
+            <div class="s-name">RiteBite Max</div>
+            <div class="s-price">₹69</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,2)">
+            <span class="s-emoji">🌾</span>
+            <div class="s-name">Yoga Bar Choc</div>
+            <div class="s-price">₹55</div>
+            <div class="s-check">✓</div>
+          </div>
+          <div class="suggest-option" onclick="selectSuggest(this,2)">
+            <span class="s-emoji">🥜</span>
+            <div class="s-name">CLIF Bar PB</div>
+            <div class="s-price">₹149</div>
+            <div class="s-check">✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="confirm-btn" id="suggestAddBtn" onclick="goToCheckout()" style="margin-top:0">🛒 Add selected to cart</button>
+  </div>
+
+  <!-- ========== SCREEN 4: CHECKOUT ========== -->
+  <div class="screen" id="s4">
+    <div class="topbar">
+      <button class="back-btn" onclick="goTo('s1')">←</button>
+      <div class="blinkit-logo">
+        <span class="lightning">⚡</span>
+        <span>blin<em>kit</em></span>
+      </div>
+    </div>
+
+    <div class="scroll-body">
+      <div class="checkout-header">
+        <div class="checkout-title">Order Summary 🧾</div>
+        <div class="checkout-sub">Review before placing</div>
+      </div>
+
+      <div class="checkout-delivery" style="margin-top:14px">
+        <div class="delivery-icon">⚡</div>
+        <div>
+          <div class="delivery-text">Arriving in 10 minutes</div>
+          <div class="delivery-sub">Express delivery • IITM, Chennai</div>
+        </div>
+      </div>
+
+      <div class="checkout-items">
+        <div class="checkout-item">
+          <div class="ci-emoji">🧂</div>
+          <div class="ci-info">
+            <div class="ci-name">Electral ORS Powder</div>
+            <div class="ci-listify-tag">✨ Added by Listify</div>
+          </div>
+          <div class="ci-price">₹99</div>
+        </div>
+        <div class="checkout-item">
+          <div class="ci-emoji">🟡</div>
+          <div class="ci-info">
+            <div class="ci-name">Gatorade 500ml</div>
+            <div class="ci-listify-tag">✨ Added by Listify</div>
+          </div>
+          <div class="ci-price">₹89</div>
+        </div>
+        <div class="checkout-item">
+          <div class="ci-emoji">🥥</div>
+          <div class="ci-info">
+            <div class="ci-name">Raw Pressery Coconut Water</div>
+            <div class="ci-listify-tag">✨ Added by Listify</div>
+          </div>
+          <div class="ci-price">₹65</div>
+        </div>
+      </div>
+
+      <div class="checkout-total">
+        <div class="ct-row"><span>Item total</span><span>₹253</span></div>
+        <div class="ct-row"><span>Delivery fee</span><span>₹25</span></div>
+        <div class="ct-row"><span>Platform fee</span><span>₹5</span></div>
+        <div class="ct-row"><span>Discount</span><span style="color:var(--green)">−₹0</span></div>
+        <div class="ct-row grand"><span>Grand Total</span><span>₹283</span></div>
+      </div>
+
+      <button class="place-btn" onclick="placeOrder()">
+        <span>🛍️</span> Place Order · ₹283
+      </button>
+    </div>
+  </div>
+
+</div><!-- end app-frame -->
+
+<script>
+  let currentMode = 'auto';
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('pillAuto').classList.toggle('active', mode === 'auto');
+    document.getElementById('pillSuggest').classList.toggle('active', mode === 'suggest');
+  }
+
+  function goTo(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    // Scroll app frame to top
+    document.querySelector('.app-frame').scrollTop = 0;
+  }
+
+  // Listify bar click → go to S2
+  document.getElementById('listifyBarTrigger').addEventListener('click', function() {
+    startListify();
+  });
+
+  function startListify() {
+    // Update mode badge
+    document.getElementById('modeBadgeText').textContent =
+      currentMode === 'auto' ? '⚡ Auto Mode' : '🎯 Suggest Mode';
+    goTo('s2');
+    // Simulate processing then auto-navigate
+    setTimeout(() => {
+      goTo(currentMode === 'auto' ? 's3a' : 's3b');
+    }, 1800);
+  }
+
+  function changeQty(btn, delta) {
+    const numEl = btn.parentElement.querySelector('.qty-num');
+    let val = parseInt(numEl.textContent) + delta;
+    if (val < 1) val = 1;
+    if (val > 9) val = 9;
+    numEl.textContent = val;
+  }
+
+  // Track selections per row
+  const rowSelections = [null, null, null];
+  function selectSuggest(el, row) {
+    // Deselect others in same row
+    const siblings = el.parentElement.querySelectorAll('.suggest-option');
+    siblings.forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    rowSelections[row] = el;
+  }
+
+  function goToCheckout() {
+    goTo('s4');
+  }
+
+  function placeOrder() {
+    const btn = document.querySelector('.place-btn');
+    btn.textContent = '✅ Order Placed!';
+    btn.style.background = '#007a2d';
+    showToast('🎉 Order placed! Arriving in 10 mins');
+    setTimeout(() => {
+      btn.innerHTML = '<span>🛍️</span> Place Order · ₹283';
+      btn.style.background = '';
+    }, 3000);
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2700);
+  }
+</script>
+</body>
+</html>
